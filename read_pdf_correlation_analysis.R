@@ -1,4 +1,4 @@
-  library(pdftools)
+library(pdftools)
 library(tm)
 
 # Read PDF and Split into Words
