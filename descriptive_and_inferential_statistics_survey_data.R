@@ -9,7 +9,7 @@ library(ggplot2)
 library(stringr)
 
 # A 24-hour dietary recall interview and a seven-day food frequency questionnaire 
-# interview were conducted for each participant
+# interviews were conducted for each participant
 
 ############### DATA CLEANING #####################
 colnames(df_user)
@@ -129,7 +129,7 @@ df_consumption_clean <- df_consumption %>%
   group_by(SUBJECT) %>%
   filter(sum(FOOD_AMOUNT_REPORTED) <= 7210.087)
 
-# nOW there are 18945 obs
+# Now there are 18945 obs
 n_distinct(df_consumption_clean$SUBJECT) # 533 subjectes, 10 were removed.
 colnames(df_consumption_clean)
 
