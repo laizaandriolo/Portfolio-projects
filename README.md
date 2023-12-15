@@ -10,4 +10,4 @@ Sustainable Development Goals - indicators 2.1.1 (Hunger), 2.1.2 (Severity of fo
 Power BI report attached
 
 Scripts
-Some scripts involving Web scraping, text mining and sentimental analysis.
+Some scripts involving descriptive and inferential statistics, Web scraping, text mining and sentimental analysis.
