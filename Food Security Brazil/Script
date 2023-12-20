@@ -1,0 +1,215 @@
+# Use the development version with latest features
+#utils::remove.packages('geobr')
+devtools::install_github("ipeaGIT/geobr", subdir = "r-package")
+
+# Load packages
+library(geobr)
+library(ggplot2)
+library(sf)
+library(dplyr)
+library(tidyr)
+library(stringi)
+
+dataset <- geobr::list_geobr()
+head(dataset)
+
+# Download spatial data as sf objects
+# Test
+# State of Rio Grande do Sul
+state <- read_state(
+  code_state = "RS",
+  year = 2020,
+  showProgress = FALSE
+)
+
+# Municipality of Porto Alegre
+muni <- read_municipality(
+  code_muni = 1200807, 
+  year=2020, 
+  showProgress = FALSE
+)
+
+# Remove plot axis
+no_axis <- theme(axis.title=element_blank(),
+                 axis.text=element_blank(),
+                 axis.ticks=element_blank())
+
+# Plot Porto Alegre municipality
+ggplot() + 
+  geom_sf(data = muni, color=NA, fill = '#1ba185') +
+  theme_void()
+
+# Download all geographic areas within a state at a given year
+
+# All municipalities in the state of Rio Grande do Sul
+muni <- read_municipality(code_muni = "RS", 
+                          year = 2020,
+                          showProgress = FALSE)
+
+# Plot Rio Grande do Sul with its municipalities
+ggplot() +
+  geom_sf(data=muni, fill="#2D3E50", color="#FEBF57", size=.15, show.legend = FALSE) +
+  labs(subtitle="Municipalities of Rio Grande do Sul, 2020", size=8) +
+  theme_minimal() +
+  no_axis
+
+# read all states
+states <- read_state(
+  year = 2019, 
+  showProgress = FALSE
+)
+
+head(states)
+
+# Plot all Brazilian states
+ggplot() +
+  geom_sf(data=states, fill="#2D3E50", color="#FEBF57", size=.15, show.legend = FALSE) +
+  labs(subtitle="States", size=8) +
+  theme_minimal() +
+  no_axis
+
+# Merge external data - df with estimates of life expectancy
+#  Read data.frame with life expectancy data
+df <- utils::read.csv(system.file("extdata/br_states_lifexpect2017.csv", package = "geobr"), encoding = "UTF-8")
+states$name_state <- tolower(states$name_state)
+df$uf <- tolower(df$uf)
+
+# join
+states <- dplyr::left_join(states, df, by = c("name_state" = "uf"))
+
+# Plot thematic map
+ggplot() +
+  geom_sf(data=states, aes(fill=ESPVIDA2017), color= NA, size=.15) +
+  labs(subtitle="Life Expectancy at birth, Brazilian States, 2014", size=8) +
+  scale_fill_distiller(palette = "Blues", name="Life Expectancy", limits = c(65,80)) +
+  theme_minimal() +
+  no_axis
+
+######### MERGE DATASETS - FOOD INSECURITY BY EACH STATE OF BRAZIL 2013
+# Brazil food insecurity in 2013
+brazil_food <- readxl::read_excel("tab1102.xls", skip = 8, col_names = TRUE)
+new_names <- c("distribution_pop", "total", "with_food_sec", "tot_pop_food_insec")
+names(brazil_food)[1:4] <- new_names
+brazil_food <- brazil_food[-c(38,39),]
+
+# Transform df into tidy data
+df_long <- pivot_longer(brazil_food, 
+                        cols = c(with_food_sec, tot_pop_food_insec, Leve, Moderada, Grave),
+                        names_to = "status",
+                        values_to = "population") %>%
+  na.omit() %>%
+  mutate(population = round(population / 100, 2)) %>%
+  mutate(status = case_when(
+    status == "with_food_sec" ~ "Food Secure",
+    status == "tot_pop_food_insec" ~ "Food Insecure",
+    status == "Leve" ~ "Mild Insecurity",
+    status == "Moderada" ~ "Moderate Insecurity",
+    status == "Grave" ~ "Severe Insecurity",
+    TRUE ~ as.character(status)  # Keep other values as they are
+  )) %>%
+  mutate(distribution_pop = case_when(
+    distribution_pop == "Urbana" ~ "Urban",
+    TRUE ~ as.character(distribution_pop)
+  ))
+
+head(df_long)
+
+# Plot
+df_long_br <- df_long %>%
+  filter(distribution_pop == "Brasil" & status %in% c("Food Insecure", "Food Secure"))
+
+# Create a simple bar plot using ggplot
+ggplot(df_long_br, aes(x = status, y = population, fill = status)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = population), vjust = -0.5, position = position_dodge(0.9)) +
+  labs(title = "Percentage of population under Food Security and Food Insecurity 
+       in Brazil (2013)",
+       x = "Status",
+       y = "Population") +
+  theme_minimal()
+
+# Lets check the population according to rural and urban areas
+# Plot
+df_long_br_area <- df_long %>%
+  filter(distribution_pop %in% c("Urban", "Rural") & status %in% c("Food Insecure", "Food Secure"))
+
+# Areas x food sec. and food insec.
+ggplot(df_long_br_area, aes(y = distribution_pop, x = population, fill = status)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = paste0(round(population * 100), "%")),
+            position = position_stack(vjust = 0.5), color = "white") +
+  labs(title = "% of pop. under food insecurity according to the area they live",
+       x = "Distribution of Population",
+       y = "Area") +
+  theme_minimal()
+
+# Lets look at the areas and levels of food insecurity
+df_long_br_area_insecurity <- df_long %>%
+    filter(distribution_pop %in% c("Urban", "Rural") & 
+             status %in% c("Mild Insecurity","Moderate Insecurity","Severe Insecurity"))
+
+# Plot
+ggplot(df_long_br_area_insecurity, aes(x = distribution_pop, y = population, fill = status)) +
+  geom_bar(stat = "identity") +  
+  geom_text(position = position_stack(vjust = 0.5),  # Adjust vjust as needed
+            aes(label = population),
+            size = 3,
+            color = "black") + 
+  labs(title = "Insecurity Levels in Urban and Rural Areas",
+       x = "Distribution Population",
+       y = "Population") + 
+  scale_fill_manual(values = c("Mild Insecurity" = "orange",
+                               "Moderate Insecurity" = "yellow",
+                               "Severe Insecurity" = "darkred")) +
+  theme_minimal()
+
+# Now lets merge the df with food insecurity data and the geographical data
+df_food_insecurity_states <-
+  df_long %>% 
+  mutate(name_state = tolower(distribution_pop)) %>%
+  filter(!name_state %in% c("urban", "rural", "brasil", "norte", "sul", "nordeste", 
+                            "sudeste", "centro-oeste") & status == "Food Insecure") %>%
+  select(-distribution_pop) %>%
+  mutate(name_state = stri_trans_general(name_state, "Latin-ASCII"))
+
+states <- states %>% mutate(name_state = stri_trans_general(name_state, "Latin-ASCII"))
+#not_matching_values <- anti_join(df_food_insecurity_states, states, by = "name_state")
+
+# Join
+states_food_insec <- dplyr::left_join(states, df_food_insecurity_states, by = "name_state")
+
+# Plot thematic map
+ggplot() +
+  geom_sf(data=states_food_insec, aes(fill=population), color= NA, size=.15) +
+  geom_sf_text(data = states_food_insec, aes(label = name_state), size = 3, color = "black", check_overlap = TRUE) +
+  labs(subtitle="Percentage of Brazilian population under food insecurity per State (2013)", size=8) +
+  scale_fill_distiller(palette = "YlOrRd", name="Food Insecurity", limits = c(0.07,0.51), direction = 1) +
+  theme_minimal() +
+  no_axis
+
+#########
+# Lets take a look in different levels of food insecurity
+categories_food_insecurity <-
+  df_long %>% 
+  mutate(name_state = tolower(distribution_pop)) %>%
+  filter(!name_state %in% c("urban", "rural", "brasil", "norte", "sul", "nordeste", 
+                            "sudeste", "centro-oeste") & status %in% c("Mild Insecurity", 
+                                                                       "Moderate Insecurity",
+                                                                       "Severe Insecurity")) %>%
+  select(-distribution_pop) %>%
+  mutate(name_state = stri_trans_general(name_state, "Latin-ASCII"))
+
+ggplot(categories_food_insecurity, aes(x = reorder(name_state, population), y = population, fill = status)) +
+  geom_bar(stat = "identity") +  
+  geom_text(position = position_stack(vjust = 0.5),
+            aes(label = population),
+            size = 3,
+            color = "black") + 
+  labs(title = "Brazilian population (%) under food insecurity in Brazil (2013) - status",
+       x = "Population",
+       y = "State") + 
+  scale_fill_manual(values = c("Mild Insecurity" = "orange",
+                               "Moderate Insecurity" = "yellow",
+                               "Severe Insecurity" = "darkred")) +
+  theme_minimal() +
+  coord_flip()
