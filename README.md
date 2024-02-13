@@ -1,6 +1,7 @@
 # Portfolio-projects
 
 Visualizations:
+
 Tableau visualizations 
 
 Link: https://public.tableau.com/app/profile/laiza2988/vizzes
