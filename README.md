@@ -2,7 +2,7 @@
 
 Visualizations:
 
-Tableau visualizations 
+Tableau  
 
 Link: https://public.tableau.com/app/profile/laiza2988/vizzes
 
@@ -10,9 +10,9 @@ Sustainable Development Goals - indicators 2.1.1 (Hunger), 2.1.2 (Severity of fo
 
 Interactive Maps
 
-Earthquakes 2023 
-
 Link: https://laizaandriolo.github.io/data_viz/interactive_map.html
+
+Earthquakes 2023 
 
 Scripts:
 Some scripts involving descriptive and inferential statistics, Web scraping, text mining and sentimental analysis.
